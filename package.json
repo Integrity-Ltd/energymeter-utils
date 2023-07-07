@@ -1,0 +1,21 @@
+{
+  "name": "energymeter-utils",
+  "version": "1.0.0",
+  "description": "",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "tsc"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "moment": "^2.29.4",
+    "moment-timezone": "^0.5.43",
+    "sqlite3": "^5.1.6",
+    "typescript": "^5.0.4"
+  },
+  "devDependencies": {
+    "@types/node": "^18.16.19",
+    "ts-node": "^10.9.1"
+  }
+}
