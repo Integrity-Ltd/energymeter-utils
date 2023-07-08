@@ -32,8 +32,10 @@ function getMeasurementsFromEnergyMeter(energymeter: any, channels: any) {
         console.error(moment().format(), err);
     });
     client.on('data', function (chunk) {
-        response += chunk;
-        client.end();
+        response += chunk.toString('utf8');
+        if (response.indexOf("channel_13") > 0) {
+            client.end();
+        }
     });
 
     client.on('end', async function () {
