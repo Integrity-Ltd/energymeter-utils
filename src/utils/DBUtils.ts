@@ -46,6 +46,8 @@ function getMeasurementsFromEnergyMeter(energymeter: any, channels: any) {
         try {
             console.log(moment().format(), energymeter.ip_address, "Try lock DB.");
             await runQuery(db, "BEGIN EXCLUSIVE", []);
+            console.log(moment().format(), energymeter.ip_address, "received rows:", response.length);
+            console.log(moment().format(), energymeter.ip_address, "allowed channels:", channels.length);
             processMeasurements(db, response, channels);
         } catch (err) {
             console.log(moment().format(), energymeter.ip_address, `DB access error: ${err}`);
