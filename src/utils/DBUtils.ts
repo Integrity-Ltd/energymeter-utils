@@ -46,7 +46,6 @@ function getMeasurementsFromEnergyMeter(energymeter: any, channels: any) {
         try {
             console.log(moment().format(), energymeter.ip_address, "Try lock DB.");
             await runQuery(db, "BEGIN EXCLUSIVE", []);
-            console.log(moment().format(), energymeter.ip_address, "received rows:", response.length);
             console.log(moment().format(), energymeter.ip_address, "allowed channels:", channels.length);
             processMeasurements(db, response, channels);
         } catch (err) {
@@ -92,6 +91,7 @@ async function getMeasurementsDB(IPAddress: string, fileName: string, create: bo
 
 function processMeasurements(db: Database, response: string, channels: String[]) {
     let currentUnixTimeStamp = moment().unix();
+    console.log(moment().format(), "received response:", response);
     response.split('\n').forEach((line) => {
         let matches = line.match(/^channel_(\d{1,2}) : (.*)/);
         if (matches && channels.includes(matches[1])) {
