@@ -50,7 +50,7 @@ function getMeasurementsFromEnergyMeter(energymeter: any, channels: any) {
             console.log(moment().format(), energymeter.ip_address, "Try lock DB.");
             await runQuery(db, "BEGIN EXCLUSIVE", []);
             console.log(moment().format(), energymeter.ip_address, "allowed channels:", channels.length);
-            processMeasurements(db, response, channels);
+            processMeasurements(db, energymeter.ip_address, response, channels);
         } catch (err) {
             console.log(moment().format(), energymeter.ip_address, `DB access error: ${err}`);
         }
@@ -92,7 +92,7 @@ async function getMeasurementsDB(IPAddress: string, fileName: string, create: bo
     return db;
 }
 
-function processMeasurements(db: Database, response: string, channels: String[]) {
+function processMeasurements(db: Database, ip_address: string, response: string, channels: String[]) {
     let currentUnixTimeStamp = moment().unix();
     //console.log(moment().format(), "received response:", response);
     response.split('\n').forEach((line) => {
@@ -100,7 +100,7 @@ function processMeasurements(db: Database, response: string, channels: String[])
         if (matches && channels.includes(matches[1])) {
             let measuredValue = parseFloat(matches[2]) * 1000;
             db.exec(`INSERT INTO Measurements (channel, measured_value, recorded_time) VALUES (${matches[1]}, ${measuredValue}, ${currentUnixTimeStamp})`);
-            console.log(moment().format(), matches[1], matches[2]);
+            console.log(moment().format(), ip_address, matches[1], matches[2]);
         }
     });
 }
