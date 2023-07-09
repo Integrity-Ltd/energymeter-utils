@@ -30,6 +30,7 @@ function getMeasurementsFromEnergyMeter(energymeter: any, channels: any) {
     }
     client.on('error', function (err) {
         console.error(moment().format(), err);
+        client.destroy();
     });
     client.on('data', function (chunk) {
         response += chunk.toString('utf8');
