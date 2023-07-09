@@ -94,7 +94,7 @@ async function getMeasurementsDB(IPAddress: string, fileName: string, create: bo
 
 function processMeasurements(db: Database, response: string, channels: String[]) {
     let currentUnixTimeStamp = moment().unix();
-    console.log(moment().format(), "received response:", response);
+    //console.log(moment().format(), "received response:", response);
     response.split('\n').forEach((line) => {
         let matches = line.match(/^channel_(\d{1,2}) : (.*)/);
         if (matches && channels.includes(matches[1])) {
