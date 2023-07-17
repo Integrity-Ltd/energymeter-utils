@@ -93,13 +93,13 @@ async function getMeasurementsDB(IPAddress: string, fileName: string, create: bo
 }
 
 function processMeasurements(db: Database, ip_address: string, response: string, channels: String[]) {
-    let currentUnixTimeStamp = moment().unix();
+    let currentUnixTimeStampRoundedToHour = moment().set("minute", 0).set("second", 0).set("millisecond", 0).unix();
     //console.log(moment().format(), "received response:", response);
     response.split('\n').forEach((line) => {
         let matches = line.match(/^channel_(\d{1,2}) : (.*)/);
         if (matches && channels.includes(matches[1])) {
             let measuredValue = parseFloat(matches[2]) * 1000;
-            db.exec(`INSERT INTO Measurements (channel, measured_value, recorded_time) VALUES (${matches[1]}, ${measuredValue}, ${currentUnixTimeStamp})`);
+            db.exec(`INSERT INTO Measurements (channel, measured_value, recorded_time) VALUES (${matches[1]}, ${measuredValue}, ${currentUnixTimeStampRoundedToHour})`);
             console.log(moment().format(), ip_address, matches[1], matches[2]);
         }
     });
