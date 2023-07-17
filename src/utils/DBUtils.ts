@@ -78,7 +78,7 @@ async function getMeasurementsDB(IPAddress: string, fileName: string, create: bo
         fs.mkdirSync(dbFilePath, { recursive: true });
         console.log(moment().format(), `Directory '${dbFilePath}' created.`);
     }
-    const dbFileName = dbFilePath + path.sep + fileName;
+    const dbFileName = path.join(dbFilePath, fileName);
     if (!fs.existsSync(dbFileName)) {
         if (create) {
             db = new Database(dbFileName, sqlite3.OPEN_READWRITE | sqlite3.OPEN_CREATE);
@@ -106,7 +106,7 @@ function processMeasurements(db: Database, ip_address: string, response: string,
 }
 
 function getDBFilePath(IPAddress: string): string {
-    const dbFilePath = (process.env.WORKDIR as string) + ((process.env.WORKDIR as string).endsWith(path.sep) ? '' : path.sep) + IPAddress;
+    const dbFilePath = path.join(process.env.WORKDIR as string, IPAddress);
     return dbFilePath;
 }
 
