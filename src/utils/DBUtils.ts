@@ -17,19 +17,24 @@ function runQuery(dbase: Database, sql: string, params: Array<any>) {
     });
 }
 
-function getMeasurementsFromEnergyMeter(energymeter: any, channels: any) {
+function getMeasurementsFromEnergyMeter(currentTime: moment.Moment, energymeter: any, channels: any) {
     let response = '';
     const client = new Net.Socket();
+    client.setTimeout(5000);
     try {
         client.connect({ port: energymeter.port, host: energymeter.ip_address }, () => {
             console.log(moment().format(), energymeter.ip_address, `TCP connection established with the server.`);
             client.write('read all');
         });
     } catch (err) {
-        console.error(moment().format(), err);
+        console.error(moment().format(), energymeter.ip_address, err);
     }
+    client.on('timeout', function () {
+        console.error(moment().format(), energymeter.ip_address, "Connection timeout");
+    });
+
     client.on('error', function (err) {
-        console.error(moment().format(), err);
+        console.error(moment().format(), energymeter.ip_address, err);
         client.destroy();
     });
     client.on('data', function (chunk) {
@@ -41,7 +46,7 @@ function getMeasurementsFromEnergyMeter(energymeter: any, channels: any) {
 
     client.on('end', async function () {
         console.log(moment().format(), energymeter.ip_address, "Data received from the server.");
-        let db: Database | undefined = await getMeasurementsDB(energymeter.ip_address, moment().format("YYYY-MM") + '-monthly.sqlite', true);
+        let db: Database | undefined = await getMeasurementsDB(energymeter.ip_address, currentTime.format("YYYY-MM") + '-monthly.sqlite', true);
         if (!db) {
             console.error(moment().format(), energymeter.ip_address, "No database exists.");
             return;
@@ -50,7 +55,7 @@ function getMeasurementsFromEnergyMeter(energymeter: any, channels: any) {
             console.log(moment().format(), energymeter.ip_address, "Try lock DB.");
             await runQuery(db, "BEGIN EXCLUSIVE", []);
             console.log(moment().format(), energymeter.ip_address, "allowed channels:", channels.length);
-            processMeasurements(db, energymeter.ip_address, response, channels);
+            processMeasurements(db, currentTime, energymeter.ip_address, response, channels);
         } catch (err) {
             console.log(moment().format(), energymeter.ip_address, `DB access error: ${err}`);
         }
@@ -92,8 +97,8 @@ async function getMeasurementsDB(IPAddress: string, fileName: string, create: bo
     return db;
 }
 
-function processMeasurements(db: Database, ip_address: string, response: string, channels: String[]) {
-    let currentUnixTimeStampRoundedToHour = moment().set("minute", 0).set("second", 0).set("millisecond", 0).unix();
+function processMeasurements(db: Database, currentTime: moment.Moment, ip_address: string, response: string, channels: String[]) {
+    let currentUnixTimeStampRoundedToHour = currentTime.set("minute", 0).set("second", 0).set("millisecond", 0).unix();
     //console.log(moment().format(), "received response:", response);
     response.split('\n').forEach((line) => {
         let matches = line.match(/^channel_(\d{1,2}) : (.*)/);
