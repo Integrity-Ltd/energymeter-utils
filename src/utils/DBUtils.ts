@@ -88,7 +88,8 @@ async function getMeasurementsDB(IPAddress: string, fileName: string, create: bo
         if (create) {
             db = new Database(dbFileName, sqlite3.OPEN_READWRITE | sqlite3.OPEN_CREATE);
             console.log(moment().format(), `DB file '${dbFileName}' created.`);
-            await runQuery(db, `CREATE TABLE "Measurements" ("id" INTEGER NOT NULL,"channel" INTEGER,"measured_value" REAL,"recorded_time" INTEGER, PRIMARY KEY("id" AUTOINCREMENT))`, []);
+            const result = await runQuery(db, `CREATE TABLE "Measurements" ("id" INTEGER NOT NULL,"channel" INTEGER,"measured_value" REAL,"recorded_time" INTEGER, PRIMARY KEY("id" AUTOINCREMENT))`, []);
+            console.log(moment().format(), "Measurements table created:", result);
         }
     } else {
         console.log(moment().format(), `DB file '${dbFileName}' opened.`);
