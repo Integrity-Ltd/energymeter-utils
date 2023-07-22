@@ -4,6 +4,7 @@ import Net from 'net';
 import sqlite3 from 'sqlite3';
 import fs from "fs";
 import path from "path";
+import { rejects } from "assert";
 
 function runQuery(dbase: Database, sql: string, params: Array<any>) {
     return new Promise<any>((resolve, reject) => {
@@ -17,62 +18,70 @@ function runQuery(dbase: Database, sql: string, params: Array<any>) {
     });
 }
 
-function getMeasurementsFromEnergyMeter(currentTime: moment.Moment, energymeter: any, channels: any) {
-    let response = '';
-    const client = new Net.Socket();
-    client.setTimeout(5000);
-    try {
-        client.connect({ port: energymeter.port, host: energymeter.ip_address }, () => {
-            console.log(moment().format(), energymeter.ip_address, `TCP connection established with the server.`);
-            client.write('read all');
-        });
-    } catch (err) {
-        console.error(moment().format(), energymeter.ip_address, err);
-    }
-    client.on('timeout', function () {
-        console.error(moment().format(), energymeter.ip_address, "Connection timeout");
-    });
-
-    client.on('error', function (err) {
-        console.error(moment().format(), energymeter.ip_address, err);
-        client.destroy();
-    });
-    client.on('data', function (chunk) {
-        response += chunk.toString('utf8');
-        if (response.indexOf("channel_13") > 0) {
-            client.end();
-        }
-    });
-
-    client.on('end', async function () {
-        console.log(moment().format(), energymeter.ip_address, "Data received from the server.");
-        let db: Database | undefined = await getMeasurementsDB(energymeter.ip_address, currentTime.format("YYYY-MM") + '-monthly.sqlite', true);
-        if (!db) {
-            console.error(moment().format(), energymeter.ip_address, "No database exists.");
-            return;
-        }
+async function getMeasurementsFromEnergyMeter(currentTime: moment.Moment, energymeter: any, channels: any): Promise<any> {
+    return new Promise<any>((resolve, reject) => {
+        let response = '';
+        const client = new Net.Socket();
+        client.setTimeout(5000);
         try {
-            console.log(moment().format(), energymeter.ip_address, "Try lock DB.");
-            await runQuery(db, "BEGIN EXCLUSIVE", []);
-            console.log(moment().format(), energymeter.ip_address, "allowed channels:", channels.length);
-            processMeasurements(db, currentTime, energymeter.ip_address, response, channels);
+            client.connect({ port: energymeter.port, host: energymeter.ip_address }, () => {
+                console.log(moment().format(), energymeter.ip_address, `TCP connection established with the server.`);
+                client.write('read all');
+            });
         } catch (err) {
-            console.log(moment().format(), energymeter.ip_address, `DB access error: ${err}`);
+            console.error(moment().format(), energymeter.ip_address, err);
+            reject(err);
         }
-        finally {
-            try {
-                await runQuery(db, "COMMIT", []);
-            } catch (err) {
-                console.log(moment().format(), energymeter.ip_address, `Commit transaction error: ${err}`);
-            }
-            console.log(moment().format(), energymeter.ip_address, 'Closing DB connection...');
-            db.close();
-            console.log(moment().format(), energymeter.ip_address, 'DB connection closed.');
-            console.log(moment().format(), energymeter.ip_address, 'Closing TCP connection...');
-            client.destroy();
-            console.log(moment().format(), energymeter.ip_address, 'TCP connection destroyed.');
-        }
+        client.on('timeout', function () {
+            console.error(moment().format(), energymeter.ip_address, "Connection timeout");
+            reject(new Error("Connection timeout"));
+        });
 
+        client.on('error', function (err) {
+            console.error(moment().format(), energymeter.ip_address, err);
+            client.destroy();
+            reject(err);
+        });
+        client.on('data', function (chunk) {
+            response += chunk.toString('utf8');
+            if (response.indexOf("channel_13") > 0) {
+                client.end();
+            }
+        });
+
+        client.on('end', async function () {
+            console.log(moment().format(), energymeter.ip_address, "Data received from the server.");
+            let db: Database | undefined = await getMeasurementsDB(energymeter.ip_address, currentTime.format("YYYY-MM") + '-monthly.sqlite', true);
+            if (db) {
+                try {
+                    console.log(moment().format(), energymeter.ip_address, "Try lock DB.");
+                    await runQuery(db, "BEGIN EXCLUSIVE", []);
+                    console.log(moment().format(), energymeter.ip_address, "allowed channels:", channels.length);
+                    processMeasurements(db, currentTime, energymeter.ip_address, response, channels);
+                } catch (err) {
+                    console.log(moment().format(), energymeter.ip_address, `DB access error: ${err}`);
+                    reject(err);
+                }
+                finally {
+                    try {
+                        await runQuery(db, "COMMIT", []);
+                    } catch (err) {
+                        console.log(moment().format(), energymeter.ip_address, `Commit transaction error: ${err}`);
+                        reject(err)
+                    }
+                    console.log(moment().format(), energymeter.ip_address, 'Closing DB connection...');
+                    db.close();
+                    console.log(moment().format(), energymeter.ip_address, 'DB connection closed.');
+                    console.log(moment().format(), energymeter.ip_address, 'Closing TCP connection...');
+                    client.destroy();
+                    console.log(moment().format(), energymeter.ip_address, 'TCP connection destroyed.');
+                    resolve(true);
+                }
+            } else {
+                console.error(moment().format(), energymeter.ip_address, "No database exists.");
+                reject(new Error("No database exists."));
+            }
+        });
     });
 }
 
