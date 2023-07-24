@@ -57,7 +57,9 @@ async function getMeasurementsFromEnergyMeter(currentTime: moment.Moment, energy
                     console.log(moment().format(), energymeter.ip_address, "Try lock DB.");
                     await runQuery(db, "BEGIN EXCLUSIVE", []);
                     console.log(moment().format(), energymeter.ip_address, "allowed channels:", channels.length);
-                    processMeasurements(db, moment(currentTime).tz(energymeter.time_zone), energymeter.ip_address, response, channels);
+                    const timezonedCurrentTime = moment(currentTime).tz(energymeter.time_zone);
+                    console.log(moment().format(), energymeter.ip_address, "Timezoned current time: ", timezonedCurrentTime.format());
+                    processMeasurements(db, timezonedCurrentTime, energymeter.ip_address, response, channels);
                 } catch (err) {
                     console.log(moment().format(), energymeter.ip_address, `DB access error: ${err}`);
                     reject(err);
@@ -108,13 +110,15 @@ async function getMeasurementsDB(IPAddress: string, fileName: string, create: bo
 }
 
 function processMeasurements(db: Database, currentTime: moment.Moment, ip_address: string, response: string, channels: String[]) {
-    let currentUnixTimeStampRoundedToHour = moment(currentTime).set("minute", 0).set("second", 0).set("millisecond", 0).unix();
+    let currentTimeRoundedToHour = moment(currentTime).set("minute", 0).set("second", 0).set("millisecond", 0);
+    console.log(moment().format(), ip_address, "currentTimeRoundedToHour:", currentTimeRoundedToHour.format());
+    let currentUnixTimeStamp = currentTimeRoundedToHour.unix();
     //console.log(moment().format(), "received response:", response);
     response.split('\n').forEach((line) => {
         let matches = line.match(/^channel_(\d{1,2}) : (.*)/);
         if (matches && channels.includes(matches[1])) {
             let measuredValue = parseFloat(matches[2]) * 1000;
-            db.exec(`INSERT INTO Measurements (channel, measured_value, recorded_time) VALUES (${matches[1]}, ${measuredValue}, ${currentUnixTimeStampRoundedToHour})`);
+            db.exec(`INSERT INTO Measurements (channel, measured_value, recorded_time) VALUES (${matches[1]}, ${measuredValue}, ${currentUnixTimeStamp})`);
             console.log(moment().format(), ip_address, matches[1], matches[2]);
         }
     });
