@@ -108,7 +108,7 @@ async function getMeasurementsDB(IPAddress: string, fileName: string, create: bo
 }
 
 function processMeasurements(db: Database, currentTime: moment.Moment, ip_address: string, response: string, channels: String[]) {
-    let currentUnixTimeStampRoundedToHour = currentTime.set("minute", 0).set("second", 0).set("millisecond", 0).unix();
+    let currentUnixTimeStampRoundedToHour = moment(currentTime).set("minute", 0).set("second", 0).set("millisecond", 0).unix();
     //console.log(moment().format(), "received response:", response);
     response.split('\n').forEach((line) => {
         let matches = line.match(/^channel_(\d{1,2}) : (.*)/);
