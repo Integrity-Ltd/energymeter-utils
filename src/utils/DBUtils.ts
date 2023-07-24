@@ -1,4 +1,4 @@
-import moment from "moment";
+import moment from "moment-timezone";
 import { Database } from "sqlite3";
 import Net from 'net';
 import sqlite3 from 'sqlite3';
@@ -57,7 +57,7 @@ async function getMeasurementsFromEnergyMeter(currentTime: moment.Moment, energy
                     console.log(moment().format(), energymeter.ip_address, "Try lock DB.");
                     await runQuery(db, "BEGIN EXCLUSIVE", []);
                     console.log(moment().format(), energymeter.ip_address, "allowed channels:", channels.length);
-                    processMeasurements(db, currentTime, energymeter.ip_address, response, channels);
+                    processMeasurements(db, moment(currentTime).tz(energymeter.time_zone), energymeter.ip_address, response, channels);
                 } catch (err) {
                     console.log(moment().format(), energymeter.ip_address, `DB access error: ${err}`);
                     reject(err);
