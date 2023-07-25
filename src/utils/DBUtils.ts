@@ -124,9 +124,40 @@ function processMeasurements(db: Database, currentTime: moment.Moment, ip_addres
     });
 }
 
+async function getMeasurementsFromDBs(fromDate: moment.Moment, toDate: moment.Moment, ip: string, channel?: number): Promise<any[]> {
+    let monthlyIterator = moment(fromDate).set("date", 1).set("hour", 0).set("minute", 0).set("second", 0).set("millisecond", 0);
+    let result: any[] = [];
+    while (monthlyIterator.isBefore(toDate) || monthlyIterator.isSame(toDate)) {
+        const filePath = (process.env.WORKDIR as string);
+        const dbFile = path.join(filePath, ip, monthlyIterator.format("YYYY-MM") + "-monthly.sqlite");
+        if (fs.existsSync(dbFile)) {
+            const db = new Database(dbFile);
+            try {
+                const fromSec = fromDate.unix();
+                const toSec = toDate.unix();
+                let options = [fromSec, toSec];
+                if (channel) {
+                    options.push(channel);
+                }
+                let measurements = await runQuery(db, "select * from measurements where recorded_time between ? and ? " + (channel ? "and channel=?" : "") + " order by recorded_time, channel", options);
+                measurements.forEach((element: any) => {
+                    result.push(element);
+                })
+            } catch (err) {
+                console.error(moment().format(), err);
+            } finally {
+                db.close();
+            }
+        }
+        monthlyIterator.add(1, "months");
+    }
+
+    return result;
+}
+
 function getDBFilePath(IPAddress: string): string {
     const dbFilePath = path.join(process.env.WORKDIR as string, IPAddress);
     return dbFilePath;
 }
 
-export default { runQuery, getMeasurementsFromEnergyMeter, getMeasurementsDB, processMeasurements, getDBFilePath };
+export default { runQuery, getMeasurementsFromEnergyMeter, getMeasurementsDB, getMeasurementsFromDBs, processMeasurements, getDBFilePath };
