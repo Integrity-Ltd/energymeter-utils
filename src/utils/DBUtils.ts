@@ -135,11 +135,11 @@ async function getMeasurementsFromDBs(fromDate: moment.Moment, toDate: moment.Mo
             try {
                 const fromSec = fromDate.unix();
                 const toSec = toDate.unix();
-                let options = [fromSec, toSec];
+                let filters = [fromSec, toSec];
                 if (channel) {
-                    options.push(channel);
+                    filters.push(channel);
                 }
-                let measurements = await runQuery(db, "select * from measurements where recorded_time between ? and ? " + (channel ? "and channel=?" : "") + " order by recorded_time, channel", options);
+                let measurements = await runQuery(db, "select * from measurements where recorded_time between ? and ? " + (channel ? "and channel=?" : "") + " order by recorded_time, channel", filters);
                 measurements.forEach((element: any) => {
                     result.push(element);
                 })
