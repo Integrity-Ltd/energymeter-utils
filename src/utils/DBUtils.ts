@@ -212,9 +212,9 @@ function getDetails(measurements: any[], timeZone: string, details: string, addF
                     channel: lastElement[key].channel,
                     diff: diff
                 };
-                if (diff != 0) {
-                    result.push({ ...prevElement[lastElement[key].channel] });
-                }
+
+                result.push({ ...prevElement[lastElement[key].channel] });
+
             } catch (err) {
                 console.error(moment().format(), err);
             }
