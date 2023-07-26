@@ -155,9 +155,76 @@ async function getMeasurementsFromDBs(fromDate: moment.Moment, toDate: moment.Mo
     return result;
 }
 
+function getDetails(measurements: any[], timeZone: string, details: string, addFirst: boolean) {
+    let result: any[] = [];
+    let prevElement: any = {};
+    let lastElement: any = {};
+    const isHourlyEnabled = details == 'hourly';
+    const isDaily = details == 'daily';
+    const isMonthly = details == 'monthly';
+    let isAddableEntry = false;
+    measurements.forEach((element: any, idx: number) => {
+        if (prevElement[element.channel] == undefined) {
+            prevElement[element.channel] = { recorded_time: element.recorded_time, measured_value: element.measured_value, channel: element.channel, diff: 0 };
+            if (addFirst) {
+                result.push({ ...prevElement[element.channel] });
+            }
+        } else {
+            const roundedPrevDay = moment.unix(prevElement[element.channel].recorded_time).tz(timeZone).set("hour", 0).set("minute", 0).set("second", 0);
+            const roundedDay = moment.unix(element.recorded_time).tz(timeZone).set("hour", 0).set("minute", 0).set("second", 0);
+            const diffDays = roundedDay.diff(roundedPrevDay, "days");
+            const isDailyEnabled = isDaily && diffDays >= 1;
+
+            const roundedPrevMonth = moment.unix(prevElement[element.channel].recorded_time).tz(timeZone).set("date", 1).set("hour", 0).set("minute", 0).set("second", 0);
+            const roundedMonth = moment.unix(element.recorded_time).tz(timeZone).set("date", 1).set("hour", 0).set("minute", 0).set("second", 0);
+            const diffMonths = roundedMonth.diff(roundedPrevMonth, "months");
+            const isMonthlyEnabled = isMonthly && diffMonths >= 1;
+            isAddableEntry = isHourlyEnabled || isDailyEnabled || isMonthlyEnabled;
+            if (isAddableEntry) {
+                prevElement[element.channel] = {
+                    recorded_time: element.recorded_time,
+                    from_utc_time: moment.unix(prevElement[element.channel].recorded_time).utc().format("YYYY-MM-DD HH:mm:ss"),
+                    to_utc_time: moment.unix(element.recorded_time).utc().format("YYYY-MM-DD HH:mm:ss"),
+                    from_local_time: moment.unix(prevElement[element.channel].recorded_time).tz(timeZone).format("YYYY-MM-DD HH:mm:ss"),
+                    to_local_time: moment.unix(element.recorded_time).tz(timeZone).format("YYYY-MM-DD HH:mm:ss"),
+                    measured_value: element.measured_value,
+                    channel: element.channel,
+                    diff: element.measured_value - prevElement[element.channel].measured_value
+                };
+                result.push({ ...prevElement[element.channel] });
+            }
+
+            lastElement[element.channel] = { recorded_time: element.recorded_time, measured_value: element.measured_value, channel: element.channel };
+        }
+    });
+    if (!isAddableEntry) {
+        Object.keys(lastElement).forEach((key) => {
+            try {
+                const diff = lastElement[key].measured_value - prevElement[lastElement[key].channel].measured_value;
+                prevElement[lastElement[key].channel] = {
+                    recorded_time: lastElement[key].recorded_time,
+                    from_utc_time: moment.unix(prevElement[lastElement[key].channel].recorded_time).utc().format("YYYY-MM-DD HH:mm:ss"),
+                    to_utc_time: moment.unix(lastElement[key].recorded_time).utc().format("YYYY-MM-DD HH:mm:ss"),
+                    from_local_time: moment.unix(prevElement[lastElement[key].channel].recorded_time).format("YYYY-MM-DD HH:mm:ss"),
+                    to_local_time: moment.unix(lastElement[key].recorded_time).format("YYYY-MM-DD HH:mm:ss"),
+                    measured_value: lastElement[key].measured_value,
+                    channel: lastElement[key].channel,
+                    diff: diff
+                };
+                if (diff != 0) {
+                    result.push({ ...prevElement[lastElement[key].channel] });
+                }
+            } catch (err) {
+                console.error(moment().format(), err);
+            }
+        });
+    }
+    return result;
+}
+
 function getDBFilePath(IPAddress: string): string {
     const dbFilePath = path.join(process.env.WORKDIR as string, IPAddress);
     return dbFilePath;
 }
 
-export default { runQuery, getMeasurementsFromEnergyMeter, getMeasurementsDB, getMeasurementsFromDBs, processMeasurements, getDBFilePath };
+export default { runQuery, getMeasurementsFromEnergyMeter, getMeasurementsDB, getMeasurementsFromDBs, processMeasurements, getDBFilePath, getDetails };
