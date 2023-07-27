@@ -146,7 +146,7 @@ async function getMeasurementsFromDBs(fromDate: moment.Moment, toDate: moment.Mo
                 db.close();
             }
         }
-        monthlyIterator.add(1, "months");
+        monthlyIterator = monthlyIterator.add(1, "months");
     }
 
     return result;
