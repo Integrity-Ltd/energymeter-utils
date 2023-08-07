@@ -7,6 +7,7 @@ import sqlite3 from 'sqlite3';
 import fs from "fs";
 import path from "path";
 import { rejects } from "assert";
+import { time } from "console";
 
 dayjs.extend(utc)
 dayjs.extend(timezone)
@@ -165,6 +166,7 @@ export function getDetails(measurements: any[], timeZone: string, details: strin
     const isDaily = details == 'daily';
     const isMonthly = details == 'monthly';
     let isAddableEntry = false;
+    const localTimeZone = dayjs.tz.guess();
     measurements.forEach((element: any, idx: number) => {
         if (prevElement[element.channel] == undefined) {
             prevElement[element.channel] = { recorded_time: element.recorded_time, measured_value: element.measured_value, channel: element.channel, diff: 0 };
@@ -172,6 +174,7 @@ export function getDetails(measurements: any[], timeZone: string, details: strin
                 result.push({ ...prevElement[element.channel] });
             }
         } else {
+
             const roundedPrevDay = dayjs.unix(prevElement[element.channel].recorded_time).tz(timeZone).set("hour", 0).set("minute", 0).set("second", 0);
             const roundedDay = dayjs.unix(element.recorded_time).tz(timeZone).set("hour", 0).set("minute", 0).set("second", 0);
             const diffDays = roundedDay.diff(roundedPrevDay, "days");
@@ -182,6 +185,7 @@ export function getDetails(measurements: any[], timeZone: string, details: strin
             const diffMonths = roundedMonth.diff(roundedPrevMonth, "months");
             const isMonthlyEnabled = isMonthly && diffMonths >= 1;
             isAddableEntry = isHourlyEnabled || isDailyEnabled || isMonthlyEnabled;
+
             if (isAddableEntry) {
                 prevElement[element.channel] = {
                     recorded_time: element.recorded_time,
@@ -189,8 +193,8 @@ export function getDetails(measurements: any[], timeZone: string, details: strin
                     to_utc_time: dayjs.unix(element.recorded_time).utc().format("YYYY-MM-DD HH:mm:ss"),
                     from_server_time: dayjs.unix(prevElement[element.channel].recorded_time).tz(timeZone).format("YYYY-MM-DD HH:mm:ss"),
                     to_server_time: dayjs.unix(element.recorded_time).tz(timeZone).format("YYYY-MM-DD HH:mm:ss"),
-                    from_local_time: dayjs.unix(prevElement[element.channel].recorded_time).format("YYYY-MM-DD HH:mm:ss"),
-                    to_local_time: dayjs.unix(element.recorded_time).format("YYYY-MM-DD HH:mm:ss"),
+                    from_local_time: dayjs.unix(prevElement[element.channel].recorded_time).tz(localTimeZone).format("YYYY-MM-DD HH:mm:ss"),
+                    to_local_time: dayjs.unix(element.recorded_time).tz(localTimeZone).format("YYYY-MM-DD HH:mm:ss"),
                     measured_value: element.measured_value,
                     channel: element.channel,
                     diff: element.measured_value - prevElement[element.channel].measured_value
@@ -211,8 +215,8 @@ export function getDetails(measurements: any[], timeZone: string, details: strin
                     to_utc_time: dayjs.unix(lastElement[key].recorded_time).utc().format("YYYY-MM-DD HH:mm:ss"),
                     from_server_time: dayjs.unix(prevElement[lastElement[key].channel].recorded_time).tz(timeZone).format("YYYY-MM-DD HH:mm:ss"),
                     to_server_time: dayjs.unix(lastElement[key].recorded_time).tz(timeZone).format("YYYY-MM-DD HH:mm:ss"),
-                    from_local_time: dayjs.unix(lastElement[key].recorded_time).format("YYYY-MM-DD HH:mm:ss"),
-                    to_local_time: dayjs.unix(lastElement[key].recorded_time).format("YYYY-MM-DD HH:mm:ss"),
+                    from_local_time: dayjs.unix(lastElement[key].recorded_time).tz(localTimeZone).format("YYYY-MM-DD HH:mm:ss"),
+                    to_local_time: dayjs.unix(lastElement[key].recorded_time).tz(localTimeZone).format("YYYY-MM-DD HH:mm:ss"),
                     measured_value: lastElement[key].measured_value,
                     channel: lastElement[key].channel,
                     diff: diff
