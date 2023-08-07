@@ -8,8 +8,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "moment": "^2.29.4",
-    "moment-timezone": "^0.5.43",
+    "dayjs": "^1.11.9",
     "sqlite3": "^5.1.6",
     "typescript": "^5.0.4"
   },
