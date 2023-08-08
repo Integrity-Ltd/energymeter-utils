@@ -1,4 +1,4 @@
-import dayjs from "dayjs";
+import dayjs, { Dayjs } from "dayjs";
 import utc from 'dayjs/plugin/utc'
 import timezone from 'dayjs/plugin/timezone'
 import { Database } from "sqlite3";
@@ -8,6 +8,7 @@ import fs from "fs";
 import path from "path";
 import { rejects } from "assert";
 import { time } from "console";
+import fileLog from "./LogUtils";
 
 dayjs.extend(utc)
 dayjs.extend(timezone)
@@ -158,32 +159,72 @@ export async function getMeasurementsFromDBs(fromDate: dayjs.Dayjs, toDate: dayj
     return result;
 }
 
+interface RecElement {
+    recorded_time: number,
+    measured_value: number,
+    channel: number,
+    diff?: number,
+    from_utc_time?: string,
+    to_utc_time?: string,
+    from_server_time?: string,
+    to_server_time?: string,
+    from_local_time?: string,
+    to_local_time?: string,
+}
+
 export function getDetails(measurements: any[], timeZone: string, details: string, addFirst: boolean) {
     let result: any[] = [];
-    let prevElement: any = {};
-    let lastElement: any = {};
+    let prevElement: RecElement[] = [];
+    let lastElement: RecElement[] = [];
     const isHourlyEnabled = details == 'hourly';
     const isDaily = details == 'daily';
     const isMonthly = details == 'monthly';
     let isAddableEntry = false;
     const localTimeZone = dayjs.tz.guess();
+    dayjs.tz.setDefault(timeZone);
+    let roundedPrevDay: Dayjs | null = null;
+    let roundedDay: Dayjs | null = null;
+    let roundedPrevMonth: Dayjs | null = null;
+    let roundedMonth: Dayjs | null = null;
+    let diffMonths: number = 0;
+    let diffDays: number = 0;
+    let isDailyEnabled: boolean = false;
+    let isMonthlyEnabled: boolean = false;
+    let prevRecTime: number = 0;
     measurements.forEach((element: any, idx: number) => {
         if (prevElement[element.channel] == undefined) {
-            prevElement[element.channel] = { recorded_time: element.recorded_time, measured_value: element.measured_value, channel: element.channel, diff: 0 };
+            prevElement[element.channel] = {
+                recorded_time: element.recorded_time,
+                measured_value: element.measured_value,
+                channel: element.channel, diff: 0,
+            };
+
+            prevRecTime = element.recorded_time;
+
             if (addFirst) {
                 result.push({ ...prevElement[element.channel] });
             }
         } else {
-
-            const roundedPrevDay = dayjs.unix(prevElement[element.channel].recorded_time).tz(timeZone).set("hour", 0).set("minute", 0).set("second", 0);
-            const roundedDay = dayjs.unix(element.recorded_time).tz(timeZone).set("hour", 0).set("minute", 0).set("second", 0);
-            const diffDays = roundedDay.diff(roundedPrevDay, "days");
-            const isDailyEnabled = isDaily && diffDays >= 1;
-
-            const roundedPrevMonth = dayjs.unix(prevElement[element.channel].recorded_time).tz(timeZone).set("date", 1).set("hour", 0).set("minute", 0).set("second", 0);
-            const roundedMonth = dayjs.unix(element.recorded_time).tz(timeZone).set("date", 1).set("hour", 0).set("minute", 0).set("second", 0);
-            const diffMonths = roundedMonth.diff(roundedPrevMonth, "months");
-            const isMonthlyEnabled = isMonthly && diffMonths >= 1;
+            const changedTime = prevRecTime !== element.recorded_time;
+            if (changedTime) {
+                if (isDaily) {
+                    roundedPrevDay = dayjs.unix(prevElement[element.channel].recorded_time).tz().set("hour", 0).set("minute", 0).set("second", 0);
+                    roundedDay = dayjs.unix(element.recorded_time).tz().set("hour", 0).set("minute", 0).set("second", 0);
+                    diffDays = roundedDay.diff(roundedPrevDay, "days");
+                    isDailyEnabled = diffDays >= 1;
+                } else {
+                    isDailyEnabled = false;
+                }
+                if (isMonthly) {
+                    roundedPrevMonth = dayjs.unix(prevElement[element.channel].recorded_time).tz().set("date", 1).set("hour", 0).set("minute", 0).set("second", 0);
+                    roundedMonth = dayjs.unix(element.recorded_time).tz().set("date", 1).set("hour", 0).set("minute", 0).set("second", 0);
+                    diffMonths = roundedMonth.diff(roundedPrevMonth, "months", true);
+                    isMonthlyEnabled = diffMonths >= 0.9;
+                } else {
+                    isMonthlyEnabled = false;
+                }
+            }
+            //fileLog("measurements.log", `${dayjs.unix(element.recorded_time).tz().format("YYYY-MM-DD HH:mm:ss")} | diff: ${diffMonths}\n`);
             isAddableEntry = isHourlyEnabled || isDailyEnabled || isMonthlyEnabled;
 
             if (isAddableEntry) {
@@ -201,12 +242,12 @@ export function getDetails(measurements: any[], timeZone: string, details: strin
                 };
                 result.push({ ...prevElement[element.channel] });
             }
-
+            prevRecTime = element.recorded_time;
             lastElement[element.channel] = { recorded_time: element.recorded_time, measured_value: element.measured_value, channel: element.channel };
         }
     });
-    if (!isAddableEntry) {
-        Object.keys(lastElement).forEach((key) => {
+    if (!isAddableEntry && lastElement.length > 0) {
+        Object.keys(lastElement).forEach((key: any) => {
             try {
                 const diff = lastElement[key].measured_value - prevElement[lastElement[key].channel].measured_value;
                 prevElement[lastElement[key].channel] = {
