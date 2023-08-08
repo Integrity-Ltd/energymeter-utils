@@ -144,7 +144,7 @@ export async function getMeasurementsFromDBs(fromDate: dayjs.Dayjs, toDate: dayj
                     filters.push(channel);
                 }
                 let measurements = await runQuery(db, "select * from measurements where recorded_time between ? and ? " + (channel ? "and channel=?" : "") + " order by recorded_time, channel", filters);
-                result = result.concat(measurements);
+                result.push(...measurements);
             } catch (err) {
                 console.error(dayjs().format(), err);
             } finally {
