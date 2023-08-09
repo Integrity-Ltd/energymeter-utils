@@ -179,7 +179,7 @@ export function getDetails(measurements: any[], timeZone: string, details: strin
     const isMonthly = details == 'monthly';
     let isAddableEntry = false;
     const localTimeZone = dayjs.tz.guess();
-    dayjs.tz.setDefault(timeZone);
+    //dayjs.tz.setDefault(timeZone);
     let roundedPrevDay: Dayjs | null = null;
     let roundedDay: Dayjs | null = null;
     let roundedPrevMonth: Dayjs | null = null;
@@ -206,16 +206,16 @@ export function getDetails(measurements: any[], timeZone: string, details: strin
             const changedTime = prevRecTime !== element.recorded_time;
             if (changedTime) {
                 if (isDaily) {
-                    roundedPrevDay = dayjs.unix(prevElement[element.channel].recorded_time).tz().set("hour", 0).set("minute", 0).set("second", 0);
-                    roundedDay = dayjs.unix(element.recorded_time).tz().set("hour", 0).set("minute", 0).set("second", 0);
+                    roundedPrevDay = dayjs.unix(prevElement[element.channel].recorded_time).set("hour", 0).set("minute", 0).set("second", 0); //.tz()
+                    roundedDay = dayjs.unix(element.recorded_time).set("hour", 0).set("minute", 0).set("second", 0); //.tz()
                     diffDays = roundedDay.diff(roundedPrevDay, "days");
                     isDailyEnabled = diffDays >= 1;
                 } else {
                     isDailyEnabled = false;
                 }
                 if (isMonthly) {
-                    roundedPrevMonth = dayjs.unix(prevElement[element.channel].recorded_time).tz().set("date", 1).set("hour", 0).set("minute", 0).set("second", 0);
-                    roundedMonth = dayjs.unix(element.recorded_time).tz().set("date", 1).set("hour", 0).set("minute", 0).set("second", 0);
+                    roundedPrevMonth = dayjs.unix(prevElement[element.channel].recorded_time).set("date", 1).set("hour", 0).set("minute", 0).set("second", 0); //.tz()
+                    roundedMonth = dayjs.unix(element.recorded_time).set("date", 1).set("hour", 0).set("minute", 0).set("second", 0); //.tz()
                     diffMonths = roundedMonth.diff(roundedPrevMonth, "months", true);
                     isMonthlyEnabled = diffMonths >= 0.9;
                 } else {
